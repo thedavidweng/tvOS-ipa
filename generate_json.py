@@ -1,8 +1,8 @@
 """Regenerate apps.json from this repo's Releases.
 
-Naming convention (no trailing brand tag):
-    <AppName>_<Version>_Nothing.ipa          (decrypted only)
-    <AppName>_<Version>_<Tweak>_<TweakVer>.ipa (injected)
+Naming convention (no trailing tag of any kind):
+    <AppName>_<Version>.ipa                     (decrypted only)
+    <AppName>_<Version>_<Tweak>_<TweakVer>.ipa  (injected)
 
 Bundle IDs are resolved from bundleId.csv first; only unknown apps are
 downloaded once to extract CFBundleIdentifier (plus icon when available).
@@ -23,11 +23,8 @@ def parse_asset_name(filename):
     """Return (app_name, version, tweaks_text)."""
     name = filename[:-4] if filename.endswith(".ipa") else filename
     try:
-        app_name, version, tweaks = name.rsplit("_", 2)
-        if tweaks == "Nothing":
-            tweaks_text = "Decrypted"
-        else:
-            tweaks_text = "Injected with " + tweaks.replace("_", " ")
+        app_name, version = name.rsplit("_", 1)
+        tweaks_text = "Decrypted"
     except ValueError:
         app_name, version, tweaks_text = name, "Unknown", None
     return app_name, version, tweaks_text
