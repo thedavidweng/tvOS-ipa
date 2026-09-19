@@ -17,6 +17,7 @@ import shutil
 
 
 REPO_NAME = "thedavidweng/tvOS-ipa"
+SF_EXTRA = "sourceforge_files.json"
 
 
 def parse_asset_name(filename):
@@ -92,6 +93,46 @@ if __name__ == "__main__":
                 }
             )
             data["apps"].sort(key=lambda x: x["fullDate"], reverse=True)
+
+    if os.path.exists(SF_EXTRA):
+        with open(SF_EXTRA, "r") as f:
+            extras = json.load(f)
+        seen = {a["name"] for a in data["apps"]}
+        for extra in extras:
+            filename = extra["name"]
+            if not filename.endswith(".ipa"):
+                continue
+            app_name, version, tweaks = parse_asset_name(filename)
+            if app_name in seen:
+                continue
+            if app_name in df.name.values:
+                bundle_id = str(df[df.name == app_name].bundleId.values[0])
+            else:
+                continue
+            icon_url = (f"https://raw.githubusercontent.com/{REPO_NAME}"
+                        f"/main/icons/{bundle_id}.png")
+            date = extra.get("date", "")
+            full_date = extra.get("fullDate") or date.replace("-", "") + "000000"
+            data["apps"].append(
+                {
+                    "name": app_name,
+                    "realBundleID": bundle_id,
+                    "bundleID": bundle_id,
+                    "bundleIdentifier": bundle_id,
+                    "version": version,
+                    "versionDate": date,
+                    "fullDate": full_date,
+                    "size": extra["size"],
+                    "down": extra["downloadURL"],
+                    "downloadURL": extra["downloadURL"],
+                    "developerName": "",
+                    "localizedDescription": tweaks,
+                    "icon": icon_url,
+                    "iconURL": icon_url,
+                }
+            )
+            seen.add(app_name)
+        data["apps"].sort(key=lambda x: x["fullDate"], reverse=True)
 
     df.to_csv("bundleId.csv", index=False)
 
