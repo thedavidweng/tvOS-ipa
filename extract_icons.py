@@ -45,13 +45,17 @@ def layer_role(path, opaque):
         return 1
     if "front" in low:
         return 2
+    # Opaque layers are the background even when Apple numbered the
+    # character as Layer-0 (Amazing Bomberman, Little Orpheus, ...).
+    if opaque:
+        return -50
     m = re.search(r"\((\d+)\)", base)
     if m:
         return int(m.group(1))
     m = re.search(r"[Ll]ayer[-_ ]?(\d+)", base)
     if m:
         return int(m.group(1)) - 1
-    return -1 if opaque else 99
+    return 99
 
 
 def is_opaque(im):
@@ -93,6 +97,16 @@ def _centered(size, im):
 
 
 def icon_layers(files):
+    usable = []
+    for f in files:
+        try:
+            st = Image.open(f).size
+        except Exception:
+            continue
+        if st[0] < 8 or st[1] < 8:
+            continue
+        usable.append(f)
+    files = usable or files
     icon_named = [f for f in files
                   if "icon" in os.path.basename(f).lower()]
     pool = icon_named or files
@@ -103,19 +117,21 @@ def icon_layers(files):
 
 
 def variant_groups(layers):
-    """Group by canvas width; tvOS small icon stacks are 400 wide, while
-    TopShelf banners/posters that slip through are wider - never prefer
-    those over the 400-wide icon group."""
+    """Group by exact canvas size. tvOS small icons are 400x240;
+    truncated 400xN slices and TopShelf banners must not mix in."""
     groups = {}
     for p in layers:
-        groups.setdefault(Image.open(p).size[0], []).append(p)
+        groups.setdefault(Image.open(p).size, []).append(p)
     return groups
 
 
 def pick_group(groups):
-    if 400 in groups:
-        return groups[400]
-    return groups[max(groups)]
+    if (400, 240) in groups:
+        return groups[(400, 240)]
+    w400 = {s: v for s, v in groups.items() if s[0] == 400}
+    if w400:
+        return w400[max(w400, key=lambda s: s[1])]
+    return groups[max(groups, key=lambda s: s[0] * s[1])]
 
 
 def extract_one(ipa_path, bundle_id, car_unpacker, workdir, outdir):
