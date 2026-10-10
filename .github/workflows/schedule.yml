@@ -1,34 +1,38 @@
+name: Regenerate app listings
+
 on:
-  push:
-    branches: ["main"]
-  release:
-    types: [published, created, edited, released, prereleased]
   workflow_dispatch:
 
-permissions: write-all
+permissions: {}
+
+concurrency:
+  group: regenerate-app-listings
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-22.04
-
+    timeout-minutes: 30
+    permissions:
+      contents: write
     steps:
-      - name: checkout repo content
+      - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: setup python
+        with:
+          persist-credentials: true # Required by the manual auto-commit step.
+      - name: Setup Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.11"
-      - name: install python packages
-        run: |
-          pip install PyGithub pandas
-      - name: regenerate apps.json
+      - name: Install locked dependencies
+        run: python -m pip install --require-hashes -r requirements-generation.txt
+      - name: Regenerate apps.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          python generate_json.py -t ${{ secrets.GITHUB_TOKEN }}
-      - uses: stefanzweifel/git-auto-commit-action@4a55954c782fc1ea30b9056cd3e7a2b40ca8887d # v7.2.0
+        run: python generate_json.py --token "$GITHUB_TOKEN"
+      - name: Commit generated listings
+        uses: stefanzweifel/git-auto-commit-action@4a55954c782fc1ea30b9056cd3e7a2b40ca8887d # v7.2.0
         with:
           commit_message: Automated Change
-          commit_options: '--no-verify --signoff'
+          commit_options: '--signoff'
           file_pattern: 'apps.json index.html bundleId.csv icons/*'
-          push_options: '--force'
