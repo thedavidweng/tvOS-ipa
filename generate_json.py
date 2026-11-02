@@ -7,7 +7,7 @@ Naming convention (no trailing tag of any kind):
 Bundle IDs are resolved from bundleId.csv first; only unknown apps are
 downloaded once to extract CFBundleIdentifier (plus icon when available).
 """
-from github import Github
+from github import Auth, Github
 import json
 import argparse
 import pandas as pd
@@ -51,12 +51,12 @@ if __name__ == "__main__":
     # clear apps
     data["apps"] = []
 
-    g = Github(token)
+    g = Github(auth=Auth.Token(token) if token is not None else None)
     repo = g.get_repo(REPO_NAME)
     releases = repo.get_releases()
 
     for release in releases:
-        print(release.title)
+        print(release.name)
 
         for asset in release.get_assets():
             if not asset.name.endswith(".ipa"):
